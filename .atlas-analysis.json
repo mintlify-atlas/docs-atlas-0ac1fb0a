@@ -1,0 +1,59 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "yt-dlp-ejs",
+  "projectDescription": "External JavaScript solver library for yt-dlp supporting multiple runtimes",
+  "theme": "palm",
+  "primaryColor": "#848484",
+  "lightColor": "#bcbcbc",
+  "darkColor": null,
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "introduction",
+          "installation",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Core Concepts",
+        "pages": [
+          "concepts/architecture",
+          "concepts/solver-types",
+          "concepts/runtime-support"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "pages": [
+          "api/python-api",
+          "api/javascript-api",
+          "api/type-definitions"
+        ]
+      },
+      {
+        "group": "Development",
+        "pages": [
+          "development/building",
+          "development/testing",
+          "development/contributing"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "YouTube signature and n-parameter solving",
+    "Multi-runtime support (Deno, Bun, Node.js)",
+    "JavaScript AST manipulation and preprocessing",
+    "Bundled solver variants (core and lib)",
+    "Python integration via importlib.resources"
+  ],
+  "publicApiSurface": [
+    "yt_dlp_ejs.yt.solver.core() -> str",
+    "yt_dlp_ejs.yt.solver.lib() -> str",
+    "main(input: Input) -> Output",
+    "preprocessPlayer(player: string) -> string",
+    "getFromPrepared(code: string) -> {n, sig}"
+  ]
+}
