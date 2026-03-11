@@ -1,80 +1,246 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with yt-dlp-ejs in minutes with a working example
+icon: rocket
 ---
 
-## Get started in three steps
+## What is yt-dlp-ejs?
 
-Get your documentation site running locally and make your first customization.
+yt-dlp-ejs is a Python package that provides external JavaScript support for yt-dlp. It solves YouTube player challenges (n-parameter and signature decryption) by bundling JavaScript solvers that work across multiple runtimes.
 
-### Step 1: Set up your local environment
+<Info>
+**Use Case**: This library is primarily used by yt-dlp to decrypt YouTube video URLs by solving JavaScript challenges embedded in YouTube's player code.
+</Info>
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+## Quick Example
+
+Here's a complete example showing how to use yt-dlp-ejs to access the JavaScript solver bundles:
+
+<Steps>
+
+<Step title="Import the module">
+
+```python
+import yt_dlp_ejs.yt.solver
+```
+
+</Step>
+
+<Step title="Access the solver bundles">
+
+The library provides two main functions to access JavaScript solver code:
+
+```python
+# Get the core solver bundle
+core_bundle = yt_dlp_ejs.yt.solver.core()
+
+# Get the library solver bundle
+lib_bundle = yt_dlp_ejs.yt.solver.lib()
+
+print(f"Core bundle loaded: {len(core_bundle)} characters")
+print(f"Lib bundle loaded: {len(lib_bundle)} characters")
+```
+
+Both functions return the minified JavaScript code as a string.
+
+</Step>
+
+<Step title="Understanding the solver functions">
+
+The solver bundles are used to:
+
+- **Preprocess YouTube player code** - Parse and prepare player JavaScript
+- **Solve 'n' challenges** - Decrypt the n-parameter throttling parameter
+- **Solve 'sig' challenges** - Decrypt video signatures
+
+<CodeGroup>
+
+```python yt_dlp_ejs/yt/solver/__init__.py
+import importlib.resources
+import yt_dlp_ejs.yt.solver
+
+def core() -> str:
+    """
+    Read the contents of the JavaScript core solver bundle as string.
+    """
+    return (importlib.resources.files(yt_dlp_ejs.yt.solver) / "core.min.js").read_text(
+        encoding="utf-8"
+    )
+
+def lib() -> str:
+    """
+    Read the contents of the JavaScript library solver bundle as string.
+    """
+    return (importlib.resources.files(yt_dlp_ejs.yt.solver) / "lib.min.js").read_text(
+        encoding="utf-8"
+    )
+```
+
+</CodeGroup>
+
+</Step>
+
+</Steps>
+
+## How It Works
+
+The JavaScript solver processes YouTube player code to extract decryption functions:
+
+<Steps>
+
+<Step title="Input Processing">
+
+The solver accepts input with:
+- **Player code** (raw YouTube player JavaScript) or **preprocessed player**
+- **Request type** (`n` for throttling parameter, `sig` for signature)
+- **Challenges** (encrypted strings to decrypt)
+
+```typescript
+type Input = {
+  type: "player";
+  player: string;                    // Raw player JavaScript
+  requests: Request[];               // Array of challenge requests
+  output_preprocessed: boolean;      // Whether to return preprocessed player
+} | {
+  type: "preprocessed";
+  preprocessed_player: string;       // Already preprocessed player
+  requests: Request[];               // Array of challenge requests
+}
+```
+
+</Step>
+
+<Step title="Solver Execution">
+
+The solver:
+1. Preprocesses the player code (if needed)
+2. Extracts the relevant decryption functions
+3. Applies them to each challenge
+4. Returns the decrypted results
+
+```typescript
+type Request = {
+  type: "n" | "sig";      // Challenge type
+  challenges: string[];    // Strings to decrypt
+}
+```
+
+</Step>
+
+<Step title="Output Format">
+
+The solver returns results for each challenge:
+
+```typescript
+type Output = {
+  type: "result";
+  preprocessed_player?: string;      // Optional preprocessed player
+  responses: Response[];             // Array of responses
+} | {
+  type: "error";
+  error: string;                     // Error message
+}
+
+type Response = {
+  type: "result";
+  data: Record<string, string>;      // Challenge -> decrypted result
+} | {
+  type: "error";
+  error: string;                     // Error message
+}
+```
+
+</Step>
+
+</Steps>
+
+## Complete Working Example
+
+Here's a practical example that demonstrates accessing the solver bundles:
+
+```python
+import yt_dlp_ejs.yt.solver
+from yt_dlp_ejs import version
+
+def main():
+    print(f"yt-dlp-ejs version: {version}")
+    print()
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    # Access the core solver bundle
+    core = yt_dlp_ejs.yt.solver.core()
+    print(f"✓ Core solver loaded: {len(core):,} bytes")
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+    # Access the library solver bundle
+    lib = yt_dlp_ejs.yt.solver.lib()
+    print(f"✓ Library solver loaded: {len(lib):,} bytes")
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    # Both bundles are minified JavaScript code
+    print()
+    print("Core bundle preview:")
+    print(core[:100] + "...")
+    
+    print()
+    print("Lib bundle preview:")
+    print(lib[:100] + "...")
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+if __name__ == "__main__":
+    main()
+```
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+<Tip>
+The solver bundles are typically used by JavaScript runtime environments (Deno, Bun, Node.js) to execute the solver logic. yt-dlp handles this integration automatically.
+</Tip>
 
-### Step 3: Go live
+## Integration with yt-dlp
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+While yt-dlp-ejs can be used standalone, it's designed to work seamlessly with yt-dlp:
 
-## Next steps
+<Note>
+yt-dlp automatically detects and uses yt-dlp-ejs when it's installed in the same environment. No additional configuration is needed.
+</Note>
 
-Now that you have your docs running, explore these key features:
+When yt-dlp needs to decrypt YouTube URLs, it:
 
-<CardGroup cols={2}>
+1. Calls `yt_dlp_ejs.yt.solver.core()` or `yt_dlp_ejs.yt.solver.lib()` to get the solver JavaScript
+2. Executes the solver in a JavaScript runtime (Deno, Bun, or Node.js)
+3. Passes the YouTube player code and challenges to the solver
+4. Receives decrypted parameters back from the solver
+5. Uses the decrypted parameters to construct working video URLs
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
+## Supported Runtimes
+
+The JavaScript solvers support multiple runtimes:
+
+<CardGroup cols={3}>
+
+<Card title="Deno" icon="code">
+Modern TypeScript runtime with built-in security
 </Card>
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
+<Card title="Bun" icon="code">
+Fast all-in-one JavaScript runtime and toolkit
 </Card>
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
+<Card title="Node.js" icon="node-js">
+Traditional JavaScript runtime (requires version 22.6+)
 </Card>
 
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+<Warning>
+The JavaScript runtime must be available in your system PATH for yt-dlp to execute the solver bundles.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="API Reference" icon="code" href="/api/python-api">
+Explore the complete API documentation
+</Card>
+
+<Card title="Architecture" icon="sitemap" href="/concepts/architecture">
+Learn how the solver works internally
+</Card>
+
+</CardGroup>

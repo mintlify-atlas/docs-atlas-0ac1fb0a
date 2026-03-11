@@ -1,0 +1,451 @@
+---
+title: 'Type Definitions'
+description: 'TypeScript type definitions for yt-dlp-ejs solver API'
+---
+
+Complete TypeScript type definitions for the yt-dlp-ejs solver API, extracted from the source code.
+
+## Core Types
+
+### Input
+
+The input type for the main solver function. It's a discriminated union with two variants.
+
+```typescript
+type Input =
+  | {
+      type: "player";
+      player: string;
+      requests: Request[];
+      output_preprocessed: boolean;
+    }
+  | {
+      type: "preprocessed";
+      preprocessed_player: string;
+      requests: Request[];
+    };
+```
+
+<Expandable title="Input Variants">
+
+#### Player Input Variant
+
+Use this variant when you have raw YouTube player code.
+
+<ParamField path="type" type="'player'" required>
+  Discriminant value indicating raw player input
+</ParamField>
+
+<ParamField path="player" type="string" required>
+  Raw YouTube player JavaScript code
+</ParamField>
+
+<ParamField path="requests" type="Request[]" required>
+  Array of challenge requests to solve
+</ParamField>
+
+<ParamField path="output_preprocessed" type="boolean" required>
+  Whether to include the preprocessed player in the output
+</ParamField>
+
+**Example:**
+
+```typescript
+const input: Input = {
+  type: "player",
+  player: "(function(){...})();",
+  requests: [
+    { type: "n", challenges: ["abc123"] }
+  ],
+  output_preprocessed: true
+};
+```
+
+#### Preprocessed Input Variant
+
+Use this variant when you already have preprocessed player code (from a previous run).
+
+<ParamField path="type" type="'preprocessed'" required>
+  Discriminant value indicating preprocessed player input
+</ParamField>
+
+<ParamField path="preprocessed_player" type="string" required>
+  Preprocessed player JavaScript code
+</ParamField>
+
+<ParamField path="requests" type="Request[]" required>
+  Array of challenge requests to solve
+</ParamField>
+
+**Example:**
+
+```typescript
+const input: Input = {
+  type: "preprocessed",
+  preprocessed_player: "var _result = {}; ...",
+  requests: [
+    { type: "sig", challenges: ["sig123", "sig456"] }
+  ]
+};
+```
+
+</Expandable>
+
+---
+
+### Output
+
+The output type returned by the main solver function. It's a discriminated union representing success or failure.
+
+```typescript
+type Output =
+  | {
+      type: "result";
+      preprocessed_player?: string;
+      responses: Response[];
+    }
+  | {
+      type: "error";
+      error: string;
+    };
+```
+
+<Expandable title="Output Variants">
+
+#### Result Output Variant
+
+Returned when solving completes (individual requests may still have errors).
+
+<ResponseField name="type" type="'result'" required>
+  Discriminant value indicating successful execution
+</ResponseField>
+
+<ResponseField name="preprocessed_player" type="string">
+  Preprocessed player code (only present if `output_preprocessed: true` was set in input)
+</ResponseField>
+
+<ResponseField name="responses" type="Response[]" required>
+  Array of responses corresponding to each request. Each response may be a success or error.
+</ResponseField>
+
+**Example:**
+
+```typescript
+const output: Output = {
+  type: "result",
+  preprocessed_player: "var _result = {}; ...",
+  responses: [
+    {
+      type: "result",
+      data: {
+        "abc123": "solved_abc123",
+        "def456": "solved_def456"
+      }
+    }
+  ]
+};
+```
+
+#### Error Output Variant
+
+Returned when top-level execution fails (e.g., invalid input format).
+
+<ResponseField name="type" type="'error'" required>
+  Discriminant value indicating top-level error
+</ResponseField>
+
+<ResponseField name="error" type="string" required>
+  Error message describing what went wrong
+</ResponseField>
+
+**Example:**
+
+```typescript
+const output: Output = {
+  type: "error",
+  error: "Invalid input format"
+};
+```
+
+</Expandable>
+
+---
+
+### Request
+
+Represents a single challenge request for solving.
+
+```typescript
+type Request = {
+  type: "n" | "sig";
+  challenges: string[];
+};
+```
+
+<ParamField path="type" type="'n' | 'sig'" required>
+  Type of challenge to solve:
+  - `"n"`: N-parameter (throttling parameter) challenge
+  - `"sig"`: Signature challenge
+</ParamField>
+
+<ParamField path="challenges" type="string[]" required>
+  Array of challenge strings to solve. Each string will be processed by the corresponding solver function.
+</ParamField>
+
+#### Example
+
+```typescript
+// N-parameter request
+const nRequest: Request = {
+  type: "n",
+  challenges: [
+    "0g0sn1Oa_LVlQ",
+    "Xnp1r9qNu4c3b"
+  ]
+};
+
+// Signature request
+const sigRequest: Request = {
+  type: "sig",
+  challenges: [
+    "A1B2C3D4E5F6G7H8I9J0"
+  ]
+};
+
+// Multiple requests in one call
+const input: Input = {
+  type: "player",
+  player: playerCode,
+  requests: [nRequest, sigRequest],
+  output_preprocessed: false
+};
+```
+
+---
+
+### Response
+
+Represents the result of processing a single Request. It's a discriminated union.
+
+```typescript
+type Response =
+  | {
+      type: "result";
+      data: Record<string, string>;
+    }
+  | {
+      type: "error";
+      error: string;
+    };
+```
+
+<Expandable title="Response Variants">
+
+#### Result Response Variant
+
+Returned when a request is successfully solved.
+
+<ResponseField name="type" type="'result'" required>
+  Discriminant value indicating successful solving
+</ResponseField>
+
+<ResponseField name="data" type="Record<string, string>" required>
+  Map of challenge strings to their solved values. Keys are the original challenge strings from the request, values are the solved results.
+</ResponseField>
+
+**Example:**
+
+```typescript
+const response: Response = {
+  type: "result",
+  data: {
+    "0g0sn1Oa_LVlQ": "solved_0g0sn1Oa_LVlQ",
+    "Xnp1r9qNu4c3b": "solved_Xnp1r9qNu4c3b"
+  }
+};
+```
+
+#### Error Response Variant
+
+Returned when a request fails to solve.
+
+<ResponseField name="type" type="'error'" required>
+  Discriminant value indicating error
+</ResponseField>
+
+<ResponseField name="error" type="string" required>
+  Error message with details. May include stack trace for JavaScript errors.
+</ResponseField>
+
+**Example:**
+
+```typescript
+const response: Response = {
+  type: "error",
+  error: "Failed to extract n function\nTypeError: Cannot read property...\n  at ..."
+};
+```
+
+</Expandable>
+
+---
+
+## Utility Types
+
+### DeepPartial
+
+Utility type for creating deeply partial versions of types. Used internally for configuration and validation.
+
+```typescript
+type DP<T> = T extends (infer U)[]
+  ? DeepPartial<U>[]
+  : T extends object
+    ? { [P in keyof T]?: DeepPartial<T[P]> }
+    : T;
+
+type ValueOf<T> = T extends (infer U)[]
+  ? U
+  : T extends object
+    ? T[keyof T]
+    : never;
+
+export type DeepPartial<T> =
+  | DP<T>
+  | { or: DP<T>[] }
+  | { anykey: DP<ValueOf<T>>[] };
+```
+
+<Note>
+  This is an advanced utility type used internally. Most users won't need to use it directly.
+</Note>
+
+---
+
+## Type Guards
+
+Helper functions for working with discriminated unions.
+
+### Checking Output Type
+
+```typescript
+function isResultOutput(output: Output): output is Extract<Output, { type: "result" }> {
+  return output.type === "result";
+}
+
+function isErrorOutput(output: Output): output is Extract<Output, { type: "error" }> {
+  return output.type === "error";
+}
+
+// Usage
+const output = main(input);
+
+if (isResultOutput(output)) {
+  // TypeScript knows output.responses exists
+  console.log(output.responses);
+} else {
+  // TypeScript knows output.error exists
+  console.error(output.error);
+}
+```
+
+### Checking Response Type
+
+```typescript
+function isResultResponse(response: Response): response is Extract<Response, { type: "result" }> {
+  return response.type === "result";
+}
+
+function isErrorResponse(response: Response): response is Extract<Response, { type: "error" }> {
+  return response.type === "error";
+}
+
+// Usage
+if (isResultOutput(output)) {
+  output.responses.forEach(response => {
+    if (isResultResponse(response)) {
+      console.log("Solved challenges:", response.data);
+    } else {
+      console.error("Request failed:", response.error);
+    }
+  });
+}
+```
+
+---
+
+## Complete Type Example
+
+Here's a complete example demonstrating all types in use:
+
+```typescript
+import type { Input, Output, Request, Response } from './yt/solver/main';
+import main from './yt/solver/main';
+
+// Define requests
+const nRequest: Request = {
+  type: "n",
+  challenges: ["challenge1", "challenge2"]
+};
+
+const sigRequest: Request = {
+  type: "sig",
+  challenges: ["signature1"]
+};
+
+// Create input
+const input: Input = {
+  type: "player",
+  player: rawPlayerCode,
+  requests: [nRequest, sigRequest],
+  output_preprocessed: true
+};
+
+// Get output
+const output: Output = main(input);
+
+// Handle output
+if (output.type === "error") {
+  console.error("Top-level error:", output.error);
+  process.exit(1);
+}
+
+// Save preprocessed player for future use
+if (output.preprocessed_player) {
+  saveToCache(output.preprocessed_player);
+}
+
+// Process each response
+output.responses.forEach((response: Response, index: number) => {
+  const request = input.requests[index];
+  
+  if (response.type === "error") {
+    console.error(`Request ${request.type} failed:`, response.error);
+    return;
+  }
+  
+  // response.data is Record<string, string>
+  Object.entries(response.data).forEach(([challenge, solved]) => {
+    console.log(`${request.type} - ${challenge}: ${solved}`);
+  });
+});
+```
+
+## TypeScript Configuration
+
+For best type inference, ensure your `tsconfig.json` includes:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true
+  }
+}
+```
+
+<Note>
+  The discriminated unions (`Input`, `Output`, `Response`) provide excellent type narrowing when using TypeScript's control flow analysis.
+</Note>

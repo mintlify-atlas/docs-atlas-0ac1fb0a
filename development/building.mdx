@@ -1,0 +1,222 @@
+---
+title: Building from Source
+description: Learn how to build yt-dlp-ejs from source with different JavaScript runtimes
+---
+
+yt-dlp-ejs can be built using multiple JavaScript runtimes: Deno, Bun, Node.js, or pnpm. The build process compiles TypeScript source files into bundled JavaScript using Rollup.
+
+## Build Requirements
+
+Before building, you need:
+
+- **Python 3.10+** with pip
+- **One of the following JavaScript runtimes:**
+  - Deno 2.0.0+
+  - Bun 1.0.31+
+  - Node.js 20.0+ with npm
+  - pnpm 10+
+
+<Info>
+The build system automatically detects and uses any available JavaScript runtime. You only need one runtime installed.
+</Info>
+
+## Quick Build with hatch_build.py
+
+The simplest way to build is using the `hatch_build.py` script, which automatically selects an available runtime:
+
+```bash
+python hatch_build.py
+```
+
+This script will:
+1. Detect available JavaScript runtimes (pnpm, Deno, Bun, or npm/Node)
+2. Install dependencies
+3. Run the bundle script
+4. Generate JavaScript files in the `dist/` directory
+
+<Tip>
+If you only have Python and a JS runtime, `hatch_build.py` is the recommended approach. It transparently invokes one of the supported runtimes.
+</Tip>
+
+## Building with Specific Runtimes
+
+### Building with Deno
+
+<Steps>
+  <Step title="Install dependencies">
+    ```bash
+    deno install --frozen
+    ```
+    
+    The `--frozen` flag ensures the lockfile is used without modifications.
+  </Step>
+
+  <Step title="Run the bundle script">
+    ```bash
+    deno task bundle
+    ```
+    
+    This executes the `bundle` script defined in package.json, which runs Rollup.
+  </Step>
+</Steps>
+
+### Building with Bun
+
+<Steps>
+  <Step title="Install dependencies">
+    ```bash
+    bun install --frozen-lockfile
+    ```
+  </Step>
+
+  <Step title="Run the bundle script">
+    ```bash
+    bun --bun run bundle
+    ```
+    
+    The `--bun` flag ensures Bun's native runtime is used.
+  </Step>
+</Steps>
+
+### Building with Node.js
+
+<Steps>
+  <Step title="Install dependencies">
+    ```bash
+    npm ci
+    ```
+    
+    Use `npm ci` for reproducible builds from the lockfile.
+  </Step>
+
+  <Step title="Run the bundle script">
+    ```bash
+    npm run bundle
+    ```
+  </Step>
+</Steps>
+
+### Building with pnpm
+
+<Steps>
+  <Step title="Install dependencies">
+    ```bash
+    pnpm install --frozen-lockfile
+    ```
+  </Step>
+
+  <Step title="Run the bundle script">
+    ```bash
+    pnpm run bundle
+    ```
+  </Step>
+</Steps>
+
+## Building the Python Package
+
+To build the complete Python package with bundled JavaScript:
+
+```bash
+python -m pip install -U build
+python -m build
+```
+
+This creates:
+- **Source distribution** (`tar.gz`) in `dist/`
+- **Wheel** (`.whl`) in `dist/`
+
+The build hook automatically invokes `deno`, `bun`, or `node` as required to bundle the JavaScript before packaging.
+
+<Note>
+The Python package uses a PEP 518-compatible build system with hatchling. The build hook in `hatch_build.py` automatically bundles JavaScript during the build process.
+</Note>
+
+## Using Rollup Directly
+
+You can also invoke Rollup directly if you have dependencies installed:
+
+```bash
+rollup -c
+```
+
+This uses the configuration in `rollup.config.js` to generate all build outputs.
+
+## Build Outputs
+
+The build process generates multiple JavaScript files in the `dist/` directory:
+
+### Core Solver Files
+
+- **`yt.solver.core.js`** - Unminified IIFE bundle for debugging
+- **`yt.solver.core.min.js`** - Minified IIFE bundle for production
+
+### Library Files
+
+- **`yt.solver.lib.js`** - Unminified library build
+- **`yt.solver.lib.min.js`** - Minified library build
+
+### Runtime-Specific Libraries
+
+- **`yt.solver.deno.lib.js`** - Deno-specific build with npm: imports
+- **`yt.solver.bun.lib.js`** - Bun-specific build
+
+<Accordion title="Build Output Details">
+Each output file:
+- Uses **Sucrase** to transpile TypeScript
+- Includes **license headers** with bundled dependency information
+- Is processed with **Terser** (minified versions remove comments and optimize)
+- Is formatted with **Prettier** (non-minified versions)
+- Has its **SHA3-512 hash** printed during build
+
+The build configuration in `rollup.config.js` defines separate outputs for different target formats (IIFE and ES modules).
+</Accordion>
+
+## Build Artifacts in Python Package
+
+When building the Python package, only the minified files are included:
+
+- `yt_dlp_ejs/yt/solver/core.min.js`
+- `yt_dlp_ejs/yt/solver/lib.min.js`
+
+You can verify package contents:
+
+```bash
+# For wheel
+unzip -l dist/yt_dlp_ejs-*.whl
+
+# For source distribution
+tar -tvzf dist/yt_dlp_ejs-*.tar.gz
+```
+
+## Verifying Build Consistency
+
+<Warning>
+If you notice differences between builds from different runtimes, please [open an issue](https://github.com/yt-dlp/ejs/issues/new).
+</Warning>
+
+All supported runtimes should produce identical output. The CI system verifies this by:
+
+1. Building with Deno as the control
+2. Generating SHA-256 hashes of all outputs
+3. Building with pnpm, Bun, and Node
+4. Comparing hashes to ensure consistency
+
+## Troubleshooting
+
+### "No suitable JavaScript runtime found"
+
+This error occurs when `hatch_build.py` cannot find any supported runtime. Install one of:
+- Deno (`deno --version`)
+- Bun (`bun --version`)
+- Node.js (`node --version`)
+- pnpm (`pnpm --version`)
+
+### Lockfile Errors
+
+Always use the frozen lockfile flags:
+- Deno: `--frozen`
+- Bun: `--frozen-lockfile`
+- pnpm: `--frozen-lockfile`
+- npm: use `npm ci` instead of `npm install`
+
+See [Upgrading Packages](/development/contributing#upgrading-packages) for information on updating lockfiles.

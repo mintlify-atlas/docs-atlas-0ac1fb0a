@@ -1,0 +1,680 @@
+---
+title: Runtime Support
+description: Multi-runtime architecture supporting Deno, Bun, and Node.js
+icon: server
+---
+
+## Overview
+
+yt-dlp-ejs is designed to work seamlessly across three major JavaScript runtimes. The library maintains feature parity and output consistency across all supported platforms.
+
+<CardGroup cols={3}>
+  <Card title="Deno" icon="deno" color="#000000">
+    First-class support with npm: specifiers
+  </Card>
+  <Card title="Bun" icon="b" color="#f472b6">
+    Native speed with optimized builds
+  </Card>
+  <Card title="Node.js" icon="node-js" color="#68a063">
+    Traditional npm ecosystem support
+  </Card>
+</CardGroup>
+
+## Runtime Comparison
+
+| Feature | Deno | Bun | Node.js |
+|---------|------|-----|----------|
+| **Lock File** | `deno.lock` (v4) | `bun.lock` | `package-lock.json` |
+| **Install Command** | `deno install --frozen` | `bun install --frozen-lockfile` | `npm ci` |
+| **Test Command** | `deno test` | `bun test` | `node --test` |
+| **TypeScript** | Native support | Native support | `--experimental-strip-types` (22.6+) |
+| **Build Format** | ES Module with npm: imports | ES Module with versioned externals | IIFE with bundled deps |
+| **Import Style** | `npm:meriyah@6.1.4` | `meriyah@6.1.4` | Bundled in IIFE |
+
+## Deno Support
+
+### Installation
+
+```bash
+deno install --frozen
+```
+
+<Info>
+The `--frozen` flag ensures reproducible builds by using the exact versions specified in `deno.lock`.
+</Info>
+
+### Running Tests
+
+First, download the player JavaScript test files:
+
+```bash
+deno run src/yt/solver/test/download.ts
+```
+
+Then run the test suite:
+
+```bash
+deno test
+```
+
+### Building
+
+```bash
+deno task bundle
+```
+
+### Deno-Specific Build Configuration
+
+The Deno build uses dynamic imports with npm: specifiers:
+
+```javascript rollup.config.js:202-225
+{
+  input: "src/yt/solver/dynamic.lib.ts",
+  output: {
+    name: "lib",
+    file: "dist/yt.solver.deno.lib.js",
+    format: "es",
+  },
+  plugins: [
+    dynamicImportRewrite(),
+    license({
+      banner: {
+        commentStyle: "ignored",
+        content: LICENSE_BANNER,
+      },
+    }),
+    // Use terser to remove comments but do not minify
+    terser({
+      compress: false,
+      mangle: false,
+    }),
+    prettifyOutput(),
+    printHash(),
+  ],
+}
+```
+
+### Dynamic Import Rewrite Plugin
+
+The `dynamicImportRewrite` plugin transforms package imports for Deno:
+
+```javascript rollup.config.js:47-71
+function dynamicImportRewrite({ format = "deno" } = {}) {
+  return {
+    name: "dynamic-import-rewrite-plugin",
+    resolveId(source) {
+      if (pkg.dependencies[source]) {
+        if (format === "deno") {
+          return {
+            id: `npm:${source}@${pkg.dependencies[source]}`,
+            external: true,
+          };
+        } else if (format === "bun") {
+          return {
+            id: `${source}@${pkg.dependencies[source]}`,
+            external: true,
+          };
+        }
+        return null;
+      }
+      return null;
+    },
+    renderDynamicImport() {
+      return null;
+    },
+  };
+}
+```
+
+<Note>
+Deno imports use the `npm:` specifier format: `npm:meriyah@6.1.4`
+</Note>
+
+### Deno Library Interface
+
+```typescript src/yt/solver/dynamic.lib.ts
+// Used for generating deno/bun auto-imports
+export const lib = {
+  meriyah: await import("meriyah"),
+  astring: await import("astring"),
+};
+```
+
+### TypeScript Support
+
+Deno has native TypeScript support - no transpilation configuration needed:
+
+```bash
+# Run TypeScript directly
+deno run src/yt/solver/main.ts
+
+# Test TypeScript files
+deno test
+```
+
+### Environment Variables
+
+When building with Deno, the build hook sets:
+
+```python hatch_build.py:44-48
+elif deno := shutil.which("deno"):
+    name = "deno"
+    env["DENO_NO_UPDATE_CHECK"] = "1"
+    install = [deno, "install", "--frozen"]
+    bundle = [deno, "task", "bundle"]
+```
+
+<Warning>
+Always set `DENO_NO_UPDATE_CHECK=1` in CI environments to prevent automatic update checks.
+</Warning>
+
+## Bun Support
+
+### Installation
+
+```bash
+bun install --frozen-lockfile
+```
+
+### Running Tests
+
+First, download the player JavaScript test files:
+
+```bash
+bun --bun run src/yt/solver/test/download.ts
+```
+
+Then run the test suite:
+
+```bash
+bun test
+```
+
+<Tip>
+The `--bun` flag uses Bun's native runtime instead of Node.js compatibility mode for maximum performance.
+</Tip>
+
+### Building
+
+```bash
+bun --bun run bundle
+```
+
+### Bun-Specific Build Configuration
+
+The Bun build uses versioned external imports:
+
+```javascript rollup.config.js:226-249
+{
+  input: "src/yt/solver/dynamic.lib.ts",
+  output: {
+    name: "lib",
+    file: "dist/yt.solver.bun.lib.js",
+    format: "es",
+  },
+  plugins: [
+    dynamicImportRewrite({ format: "bun" }),
+    license({
+      banner: {
+        commentStyle: "ignored",
+        content: LICENSE_BANNER,
+      },
+    }),
+    // Use terser to remove comments but do not minify
+    terser({
+      compress: false,
+      mangle: false,
+    }),
+    prettifyOutput(),
+    printHash(),
+  ],
+}
+```
+
+<Note>
+Bun imports use versioned specifiers without the `npm:` prefix: `meriyah@6.1.4`
+</Note>
+
+### Build Hook Configuration
+
+```python hatch_build.py:50-53
+elif bun := shutil.which("bun"):
+    name = "bun"
+    install = [bun, "install", "--frozen-lockfile"]
+    bundle = [bun, "--bun", "run", "bundle"]
+```
+
+### Lock File Migration
+
+When upgrading packages, Bun's lock file is generated from npm's:
+
+```bash
+# Generate base package-lock.json
+rm -rf node_modules
+npm install
+
+# Migrate to Bun
+bun pm migrate --force
+```
+
+## Node.js Support
+
+### Requirements
+
+<CardGroup cols={2}>
+  <Card title="Node.js 22.6+" icon="node-js">
+    Required for `--experimental-strip-types` support
+  </Card>
+  <Card title="npm" icon="npm">
+    Package manager for dependency installation
+  </Card>
+</CardGroup>
+
+### Installation
+
+```bash
+npm ci
+```
+
+<Info>
+`npm ci` (clean install) ensures reproducible builds by strictly following `package-lock.json`.
+</Info>
+
+### Running Tests
+
+First, download the player JavaScript test files:
+
+```bash
+node --experimental-strip-types src/yt/solver/test/download.ts
+```
+
+Then run the test suite:
+
+```bash
+node --test
+```
+
+### Building
+
+```bash
+npm run bundle
+```
+
+### TypeScript Support
+
+Node.js 22.6+ supports TypeScript through the experimental strip-types feature:
+
+```bash
+node --experimental-strip-types src/yt/solver/main.ts
+```
+
+<Warning>
+The `--experimental-strip-types` flag is experimental. For production use, consider using a transpiler like Sucrase (used in the build process).
+</Warning>
+
+### Build Configuration
+
+Node.js builds use IIFE format with bundled dependencies:
+
+```javascript rollup.config.js:82-116
+{
+  input: "src/yt/solver/main.ts",
+  output: {
+    name: "jsc",
+    globals: {
+      astring: "astring",
+      input: "input",
+      meriyah: "meriyah",
+    },
+    file: "dist/yt.solver.core.js",
+    format: "iife",
+  },
+  external: ["astring", "meriyah"],
+  plugins: [
+    nodeResolve(),
+    sucrase({
+      exclude: ["node_modules/**"],
+      transforms: ["typescript"],
+    }),
+    license({
+      banner: {
+        commentStyle: "ignored",
+        content: LICENSE_BANNER,
+      },
+    }),
+    // Use terser to remove comments but do not minify
+    terser({
+      compress: false,
+      mangle: false,
+    }),
+    prettifyOutput(),
+    printHash(),
+  ],
+}
+```
+
+### Build Hook Configuration
+
+```python hatch_build.py:55-58
+elif npm := shutil.which("npm"):
+    name = "npm (node)"
+    install = [npm, "ci"]
+    bundle = [npm, "run", "bundle"]
+```
+
+## Build System
+
+### Automatic Runtime Detection
+
+The build system automatically detects and uses available runtimes:
+
+```python hatch_build.py:36-63
+def build_bundle_cmds():
+    env = os.environ.copy()
+
+    if pnpm := shutil.which("pnpm"):
+        name = "pnpm"
+        install = [pnpm, "install", "--frozen-lockfile"]
+        bundle = [pnpm, "run", "bundle"]
+
+    elif deno := shutil.which("deno"):
+        name = "deno"
+        env["DENO_NO_UPDATE_CHECK"] = "1"
+        install = [deno, "install", "--frozen"]
+        bundle = [deno, "task", "bundle"]
+
+    elif bun := shutil.which("bun"):
+        name = "bun"
+        install = [bun, "install", "--frozen-lockfile"]
+        bundle = [bun, "--bun", "run", "bundle"]
+
+    elif npm := shutil.which("npm"):
+        name = "npm (node)"
+        install = [npm, "ci"]
+        bundle = [npm, "run", "bundle"]
+
+    else:
+        return None, None, None
+
+    return name, [install, bundle], env
+```
+
+<Steps>
+  <Step title="Detection Priority">
+    The build system checks for runtimes in this order:
+    1. pnpm
+    2. Deno
+    3. Bun
+    4. npm (Node.js)
+  </Step>
+
+  <Step title="Install Dependencies">
+    Execute the appropriate install command with frozen lock files
+  </Step>
+
+  <Step title="Bundle JavaScript">
+    Run the bundle script to generate distribution files
+  </Step>
+
+  <Step title="Include in Package">
+    Add minified bundles to the Python package
+
+    ```python
+    build_data["force_include"].update(
+        {
+            "dist/yt.solver.core.min.js": "yt_dlp_ejs/yt/solver/core.min.js",
+            "dist/yt.solver.lib.min.js": "yt_dlp_ejs/yt/solver/lib.min.js",
+        }
+    )
+    ```
+  </Step>
+</Steps>
+
+### Manual Build Script
+
+For development without a Python builder:
+
+```bash
+python hatch_build.py
+```
+
+This script:
+- Detects available JavaScript runtime
+- Installs dependencies
+- Runs the bundle process
+- Outputs build artifacts to `dist/`
+
+```python hatch_build.py:66-80
+if __name__ == "__main__":
+    import sys
+
+    name, cmds, env = build_bundle_cmds()
+    if cmds is None:
+        print("ERROR: No suitable JavaScript runtime found", file=sys.stderr)
+        sys.exit(128)
+    print(f"Bundling using {name}...", file=sys.stderr)
+
+    try:
+        for cmd in cmds:
+            subprocess.check_call(cmd, env=env)
+    except subprocess.CalledProcessError as error:
+        sys.exit(error.returncode)
+```
+
+## Lock Files
+
+### Synchronization Requirement
+
+All lock files must be kept in sync across runtimes:
+
+<Tabs>
+  <Tab title="Deno">
+    ```bash
+    deno install --lockfile-only
+    ```
+
+    <Warning>
+    Use Deno version 2.3 or earlier for lockfile v4 compatibility.
+    </Warning>
+  </Tab>
+
+  <Tab title="Bun">
+    ```bash
+    bun pm migrate --force
+    ```
+
+    Migrates from `package-lock.json` to `bun.lock`.
+  </Tab>
+
+  <Tab title="Node.js">
+    ```bash
+    rm -rf node_modules
+    npm install
+    ```
+
+    Generates the base `package-lock.json`.
+  </Tab>
+
+  <Tab title="pnpm">
+    ```bash
+    pnpm import
+    ```
+
+    Imports from `package-lock.json` to `pnpm-lock.yaml`.
+  </Tab>
+</Tabs>
+
+### Upgrade Workflow
+
+When upgrading packages, follow this sequence:
+
+```bash
+# 1. Upgrade packages automatically (or manually adjust versions)
+pnpm upgrade --latest
+
+# 2. Generate base package-lock.json
+rm -rf node_modules
+npm install
+
+# 3. Migrate to other package managers
+pnpm import
+bun pm migrate --force
+
+# 4. Generate Deno lock (use deno <2.3 for lockfile v4)
+deno install --lockfile-only
+
+# 5. Verify consistency
+python check.py
+```
+
+<Note>
+The `check.py` script verifies that all lock files reference the same dependency versions.
+</Note>
+
+## Build Output Consistency
+
+All runtimes must produce identical build outputs:
+
+### Hash Verification
+
+The build process computes SHA3-512 hashes of outputs:
+
+```javascript rollup.config.js:27-45
+function printHash() {
+  return {
+    name: "hash-output-plugin",
+    writeBundle(_options, bundle) {
+      for (const [fileName, assetInfo] of Object.entries(bundle)) {
+        if (assetInfo.code) {
+          try {
+            const digest = createHash("sha3-512")
+              .update(assetInfo.code)
+              .digest("hex");
+            console.log(`SHA3-512 for ${assetInfo.fileName}: ${digest}`);
+          } catch (err) {
+            console.error(`Error hashing ${fileName}:`, err.message);
+          }
+        }
+      }
+    },
+  };
+}
+```
+
+<Warning>
+If you notice differences between runtimes' builds, please [open an issue](https://github.com/yt-dlp/ejs/issues/new).
+</Warning>
+
+## Shared Dependencies
+
+Both runtimes and all build configurations share the same core dependencies:
+
+```json package.json
+{
+  "dependencies": {
+    "astring": "1.9.0",
+    "meriyah": "6.1.4"
+  }
+}
+```
+
+### Dependency Loading Strategies
+
+<Tabs>
+  <Tab title="Deno (ES Module)">
+    ```typescript
+    import { parse } from "npm:meriyah@6.1.4";
+    import { generate } from "npm:astring@1.9.0";
+    ```
+  </Tab>
+
+  <Tab title="Bun (ES Module)">
+    ```typescript
+    import { parse } from "meriyah@6.1.4";
+    import { generate } from "astring@1.9.0";
+    ```
+  </Tab>
+
+  <Tab title="Node.js (Bundled IIFE)">
+    ```javascript
+    // Dependencies are bundled into the IIFE
+    var jsc = (function (astring, meriyah) {
+      // ... solver code ...
+    })(astring, meriyah);
+    ```
+  </Tab>
+</Tabs>
+
+## Testing Across Runtimes
+
+The test suite is designed to run identically across all runtimes:
+
+```bash
+# Download test fixtures (only needed once)
+deno run src/yt/solver/test/download.ts
+# or
+bun --bun run src/yt/solver/test/download.ts
+# or
+node --experimental-strip-types src/yt/solver/test/download.ts
+
+# Run tests
+deno test        # Deno
+bun test         # Bun
+node --test      # Node.js
+```
+
+<CardGroup cols={3}>
+  <Card title="Same Tests" icon="check">
+    Identical test files run on all platforms
+  </Card>
+  <Card title="Same Fixtures" icon="database">
+    Shared player JavaScript test data
+  </Card>
+  <Card title="Same Results" icon="equals">
+    All runtimes must pass the same assertions
+  </Card>
+</CardGroup>
+
+## Platform-Specific Optimizations
+
+While maintaining identical outputs, each runtime has optimizations:
+
+<Tabs>
+  <Tab title="Deno">
+    - Native TypeScript execution (no transpilation)
+    - Built-in security sandbox
+    - Optimized npm: specifier resolution
+  </Tab>
+
+  <Tab title="Bun">
+    - Extremely fast startup time
+    - Native transpilation of TypeScript
+    - Optimized package installation
+  </Tab>
+
+  <Tab title="Node.js">
+    - Widest ecosystem compatibility
+    - Mature tooling support
+    - Traditional npm package resolution
+  </Tab>
+</Tabs>
+
+## Choosing a Runtime
+
+<Steps>
+  <Step title="For Development">
+    Use whichever runtime you have installed. All provide excellent development experiences.
+  </Step>
+
+  <Step title="For CI/CD">
+    Consider Bun for fastest build times, or Node.js for maximum compatibility.
+  </Step>
+
+  <Step title="For yt-dlp Integration">
+    The runtime is auto-detected during installation. End users don't need to choose.
+  </Step>
+</Steps>
+
+<Info>
+The beauty of yt-dlp-ejs is that you never need to worry about runtime differences - the library ensures identical behavior everywhere.
+</Info>

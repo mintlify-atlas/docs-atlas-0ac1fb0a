@@ -1,0 +1,88 @@
+---
+title: Introduction
+description: External JavaScript solver library for yt-dlp supporting multiple runtimes
+---
+
+<div className="bg-white border-[#d1d1d1] border rounded-[4px] p-8 mb-8">
+  <h1 className="text-[36px] font-bold text-black mb-4">yt-dlp-ejs</h1>
+  <p className="text-[16px] text-black mb-6">
+    External JavaScript solver library for yt-dlp supporting multiple runtimes including Deno, Bun, and Node.js
+  </p>
+  <div className="flex gap-4">
+    <a 
+      href="/installation" 
+      className="inline-block bg-[#3b4cca] text-white px-6 py-3 rounded-[4px] font-medium hover:opacity-90 transition-opacity"
+    >
+      Get Started
+    </a>
+    <a 
+      href="https://github.com/yt-dlp/ejs" 
+      className="inline-block bg-transparent text-black px-6 py-3 border border-black rounded-[0px] font-medium hover:bg-black hover:text-white transition-all"
+    >
+      View on GitHub
+    </a>
+  </div>
+</div>
+
+## What is yt-dlp-ejs?
+
+yt-dlp-ejs is a specialized library that provides external JavaScript execution capabilities for [yt-dlp](https://github.com/yt-dlp/yt-dlp), the popular video downloader. It solves YouTube's signature and n-parameter challenges by preprocessing and executing JavaScript code in a sandboxed environment.
+
+The library is designed to work seamlessly across multiple JavaScript runtimes, making it flexible and reliable for different deployment scenarios.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Multi-Runtime Support" icon="layer-group">
+    Works with Deno, Bun, and Node.js, giving you flexibility in your runtime choice
+  </Card>
+  <Card title="YouTube Solver" icon="youtube">
+    Solves signature and n-parameter challenges for YouTube video extraction
+  </Card>
+  <Card title="AST Manipulation" icon="code-branch">
+    Uses meriyah and astring for JavaScript AST parsing and code generation
+  </Card>
+  <Card title="Bundled Variants" icon="box">
+    Provides both core and lib solver bundles for different use cases
+  </Card>
+</CardGroup>
+
+## How It Works
+
+yt-dlp-ejs preprocesses YouTube player JavaScript code to extract signature and n-parameter solving functions. These functions are then made available through a clean Python API that yt-dlp can use to decode video URLs.
+
+The library uses:
+- **meriyah** for parsing JavaScript into an Abstract Syntax Tree (AST)
+- **astring** for generating JavaScript code from the AST
+- **rollup** for bundling the solver code with dependencies
+
+## Use Cases
+
+<CardGroup cols={1}>
+  <Card title="yt-dlp Integration" icon="puzzle-piece">
+    Primarily used as a dependency for yt-dlp to handle YouTube's JavaScript challenges
+  </Card>
+  <Card title="Custom Video Extractors" icon="wrench">
+    Can be integrated into custom video extraction tools that need to solve YouTube challenges
+  </Card>
+  <Card title="Research & Development" icon="flask">
+    Useful for studying YouTube's protection mechanisms and developing new solving strategies
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install yt-dlp-ejs in your environment
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get started with basic usage examples
+  </Card>
+  <Card title="Architecture" icon="sitemap" href="/concepts/architecture">
+    Learn how the solver works internally
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/python-api">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>

@@ -1,0 +1,380 @@
+---
+title: 'JavaScript API'
+description: 'JavaScript/TypeScript API reference for yt-dlp-ejs solver functions'
+---
+
+The JavaScript API provides functions to preprocess YouTube player code and extract solver functions for the n-parameter and signature challenges.
+
+## Main Functions
+
+### main()
+
+The primary entry point for solving YouTube challenges. Processes player code and returns solved challenges.
+
+#### Function Signature
+
+```typescript
+function main(input: Input): Output
+```
+
+<ParamField path="input" type="Input" required>
+  Input object containing either raw player code or preprocessed player code, along with challenge requests
+</ParamField>
+
+<ParamField path="returns" type="Output" required>
+  Output object containing solved challenges or error information
+</ParamField>
+
+#### Description
+
+The `main()` function orchestrates the entire solving process:
+
+1. Preprocesses the player code (if not already preprocessed)
+2. Extracts solver functions from the preprocessed code
+3. Solves each challenge request
+4. Returns results with optional preprocessed player output
+
+#### Usage Examples
+
+<CodeGroup>
+
+```typescript With Raw Player Code
+import main from './yt/solver/main';
+
+const input = {
+  type: "player",
+  player: "...raw YouTube player JavaScript code...",
+  requests: [
+    {
+      type: "n",
+      challenges: ["challenge_string_1", "challenge_string_2"]
+    },
+    {
+      type: "sig",
+      challenges: ["signature_challenge_1"]
+    }
+  ],
+  output_preprocessed: true
+};
+
+const output = main(input);
+
+if (output.type === "result") {
+  console.log("Responses:", output.responses);
+  console.log("Preprocessed player:", output.preprocessed_player);
+}
+```
+
+```typescript With Preprocessed Player
+import main from './yt/solver/main';
+
+const input = {
+  type: "preprocessed",
+  preprocessed_player: "...preprocessed player code...",
+  requests: [
+    {
+      type: "n",
+      challenges: ["challenge_string"]
+    }
+  ]
+};
+
+const output = main(input);
+
+if (output.type === "result") {
+  output.responses.forEach(response => {
+    if (response.type === "result") {
+      console.log("Solved:", response.data);
+    } else {
+      console.error("Error:", response.error);
+    }
+  });
+}
+```
+
+</CodeGroup>
+
+#### Implementation Details
+
+The function processes input through these steps:
+
+1. **Preprocessing**: If `input.type === "player"`, calls `preprocessPlayer()` on the raw player code
+2. **Extraction**: Calls `getFromPrepared()` to extract solver functions
+3. **Solving**: Maps over each request, calling the appropriate solver (`n` or `sig`) for each challenge
+4. **Error Handling**: Catches and returns errors for individual requests
+5. **Output**: Returns combined results with optional preprocessed player
+
+<Note>
+  Each request is processed independently. If one request fails, others may still succeed.
+</Note>
+
+---
+
+### preprocessPlayer()
+
+Preprocesses raw YouTube player JavaScript code to extract and prepare solver functions.
+
+#### Function Signature
+
+```typescript
+function preprocessPlayer(data: string): string
+```
+
+<ParamField path="data" type="string" required>
+  Raw YouTube player JavaScript code
+</ParamField>
+
+<ParamField path="returns" type="string" required>
+  Preprocessed JavaScript code containing extracted solver functions
+</ParamField>
+
+#### Description
+
+This function:
+
+1. Parses the raw player code into an AST (Abstract Syntax Tree)
+2. Modifies the AST to extract solver-related code
+3. Adds solution extraction logic for n-parameter and signature functions
+4. Generates and returns optimized JavaScript code
+
+#### Usage Example
+
+```typescript
+import { preprocessPlayer } from './yt/solver/solvers';
+
+const rawPlayer = `
+  // Raw YouTube player code
+  (function() {
+    // ... thousands of lines of minified code ...
+  })();
+`;
+
+const preprocessed = preprocessPlayer(rawPlayer);
+
+// The preprocessed code is now ready for getFromPrepared()
+console.log("Preprocessed code length:", preprocessed.length);
+```
+
+#### Implementation Flow
+
+```typescript
+// 1. Parse the player code
+const program = parse(data);
+
+// 2. Modify the AST
+const plainStatements = modifyPlayer(program);
+
+// 3. Extract solutions (n and sig functions)
+const solutions = getSolutions(plainStatements);
+
+// 4. Add solution assignment code
+for (const [name, options] of Object.entries(solutions)) {
+  // Adds _result.n = ... and _result.sig = ...
+}
+
+// 5. Generate final code
+return generate(program);
+```
+
+<Note>
+  Preprocessing is computationally expensive. Cache the preprocessed result to avoid re-processing the same player code.
+</Note>
+
+---
+
+### getFromPrepared()
+
+Executes preprocessed player code to extract solver functions.
+
+#### Function Signature
+
+```typescript
+function getFromPrepared(code: string): {
+  n: ((val: string) => string) | null;
+  sig: ((val: string) => string) | null;
+}
+```
+
+<ParamField path="code" type="string" required>
+  Preprocessed player code (from `preprocessPlayer()`)
+</ParamField>
+
+<ParamField path="returns" type="object" required>
+  Object containing n-parameter and signature solver functions, or null if extraction failed
+  
+  <Expandable title="properties">
+    <ResponseField name="n" type="function | null">
+      Function that solves n-parameter challenges, or null if not found
+    </ResponseField>
+    <ResponseField name="sig" type="function | null">
+      Function that solves signature challenges, or null if not found
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+#### Description
+
+This function executes the preprocessed player code in a controlled environment to extract the solver functions. It uses the `Function` constructor to create a sandboxed execution context.
+
+#### Usage Example
+
+```typescript
+import { preprocessPlayer, getFromPrepared } from './yt/solver/solvers';
+
+// First, preprocess the player
+const preprocessed = preprocessPlayer(rawPlayerCode);
+
+// Then extract solvers
+const solvers = getFromPrepared(preprocessed);
+
+if (solvers.n) {
+  const solved = solvers.n("challenge_string");
+  console.log("Solved n-parameter:", solved);
+} else {
+  console.error("Failed to extract n-parameter solver");
+}
+
+if (solvers.sig) {
+  const solved = solvers.sig("signature_challenge");
+  console.log("Solved signature:", solved);
+} else {
+  console.error("Failed to extract signature solver");
+}
+```
+
+#### Implementation Details
+
+```typescript
+const resultObj = { n: null, sig: null };
+Function("_result", code)(resultObj);
+return resultObj;
+```
+
+The function creates a new Function with `_result` as a parameter, executes the preprocessed code, and the code populates `_result.n` and `_result.sig` with the solver functions.
+
+<Note>
+  This function uses `Function()` constructor for code execution. Ensure the preprocessed code comes from a trusted source.
+</Note>
+
+---
+
+### modifyPlayer()
+
+Modifies the player AST to extract plain statements for solver extraction.
+
+#### Function Signature
+
+```typescript
+function modifyPlayer(program: ESTree.Program): ESTree.Statement[]
+```
+
+<ParamField path="program" type="ESTree.Program" required>
+  Parsed AST of the YouTube player code
+</ParamField>
+
+<ParamField path="returns" type="ESTree.Statement[]" required>
+  Array of filtered statements containing solver logic
+</ParamField>
+
+#### Description
+
+This internal function:
+
+1. Extracts the main code block from the player's wrapper structure
+2. Filters out unnecessary statements (non-assignment expressions)
+3. Returns clean statements for solver extraction
+
+The function handles two common player code structures:
+
+- **Structure 1**: Single IIFE (Immediately Invoked Function Expression)
+- **Structure 2**: Two-statement structure with variable declarations
+
+#### Usage Example
+
+```typescript
+import { parse } from 'meriyah';
+import { modifyPlayer } from './yt/solver/solvers';
+
+const program = parse(rawPlayerCode);
+const statements = modifyPlayer(program);
+
+console.log(`Extracted ${statements.length} statements`);
+```
+
+<Note>
+  This is primarily an internal function used by `preprocessPlayer()`. Most users should use the higher-level functions instead.
+</Note>
+
+---
+
+## Complete Workflow Example
+
+```typescript
+import main from './yt/solver/main';
+import { preprocessPlayer, getFromPrepared } from './yt/solver/solvers';
+
+// Scenario 1: One-time solve with main()
+const quickSolve = main({
+  type: "player",
+  player: rawPlayerCode,
+  requests: [
+    { type: "n", challenges: ["abc123"] }
+  ],
+  output_preprocessed: false
+});
+
+// Scenario 2: Preprocess once, solve multiple times
+const preprocessed = preprocessPlayer(rawPlayerCode);
+const solvers = getFromPrepared(preprocessed);
+
+// Now solve multiple challenges efficiently
+const solved1 = solvers.n?.("challenge1");
+const solved2 = solvers.n?.("challenge2");
+const solved3 = solvers.sig?.("signature1");
+
+// Scenario 3: Use preprocessed code with main()
+const result = main({
+  type: "preprocessed",
+  preprocessed_player: preprocessed,
+  requests: [
+    { type: "n", challenges: ["challenge4", "challenge5"] },
+    { type: "sig", challenges: ["sig2"] }
+  ]
+});
+```
+
+## Error Handling
+
+All functions may throw errors during execution:
+
+```typescript
+try {
+  const output = main(input);
+  
+  if (output.type === "error") {
+    console.error("Top-level error:", output.error);
+  } else {
+    output.responses.forEach((response, i) => {
+      if (response.type === "error") {
+        console.error(`Request ${i} failed:", response.error);
+      }
+    });
+  }
+} catch (error) {
+  console.error("Unexpected error:", error);
+}
+```
+
+## Performance Tips
+
+<Note>
+  **Cache preprocessed players**: Preprocessing is expensive. If you're solving multiple challenges with the same player version, preprocess once and reuse the result.
+</Note>
+
+<Note>
+  **Batch requests**: Use the `requests` array in `main()` to solve multiple challenges in one call rather than calling `main()` repeatedly.
+</Note>
+
+<Note>
+  **Direct solver usage**: For maximum performance when solving many challenges, use `getFromPrepared()` to extract solver functions and call them directly.
+</Note>

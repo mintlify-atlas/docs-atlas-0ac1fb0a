@@ -1,0 +1,146 @@
+---
+title: 'Python API'
+description: 'Python API reference for yt-dlp-ejs solver functions'
+---
+
+The Python API provides access to pre-bundled JavaScript solver bundles that can be executed in a JavaScript runtime to solve YouTube's throttling and signature challenges.
+
+## Installation
+
+```python
+import yt_dlp_ejs.yt.solver
+```
+
+## Functions
+
+### core()
+
+Reads the contents of the JavaScript core solver bundle as a string.
+
+<ParamField path="returns" type="str" required>
+  The JavaScript core solver bundle as a UTF-8 encoded string
+</ParamField>
+
+#### Function Signature
+
+```python
+def core() -> str:
+    """
+    Read the contents of the JavaScript core solver bundle as string.
+    """
+```
+
+#### Description
+
+This function returns the minified JavaScript core solver bundle (`core.min.js`) that contains the compiled solver logic. The returned string can be executed in a JavaScript runtime (such as Node.js, Deno, or a browser environment) to process YouTube player code.
+
+#### Usage Example
+
+```python
+import yt_dlp_ejs.yt.solver
+
+# Get the core solver bundle
+core_js = yt_dlp_ejs.yt.solver.core()
+
+# The bundle is returned as a string ready for execution
+print(f"Core bundle size: {len(core_js)} bytes")
+
+# Execute in your JavaScript runtime of choice
+# Example: using PyMiniRacer or similar
+```
+
+#### Implementation Details
+
+The function uses `importlib.resources` to read the bundled `core.min.js` file from the package resources:
+
+```python
+importlib.resources.files(yt_dlp_ejs.yt.solver) / "core.min.js"
+```
+
+---
+
+### lib()
+
+Reads the contents of the JavaScript library solver bundle as a string.
+
+<ParamField path="returns" type="str" required>
+  The JavaScript library solver bundle as a UTF-8 encoded string
+</ParamField>
+
+#### Function Signature
+
+```python
+def lib() -> str:
+    """
+    Read the contents of the JavaScript library solver bundle as string.
+    """
+```
+
+#### Description
+
+This function returns the minified JavaScript library solver bundle (`lib.min.js`) that contains additional solver utilities and dependencies. Like the core bundle, this string can be executed in a JavaScript runtime.
+
+#### Usage Example
+
+```python
+import yt_dlp_ejs.yt.solver
+
+# Get the library solver bundle
+lib_js = yt_dlp_ejs.yt.solver.lib()
+
+# The bundle is returned as a string ready for execution
+print(f"Library bundle size: {len(lib_js)} bytes")
+
+# Execute in your JavaScript runtime
+```
+
+#### Implementation Details
+
+The function uses `importlib.resources` to read the bundled `lib.min.js` file from the package resources:
+
+```python
+importlib.resources.files(yt_dlp_ejs.yt.solver) / "lib.min.js"
+```
+
+---
+
+## Complete Example
+
+```python
+import yt_dlp_ejs.yt.solver
+import json
+
+# Get both bundles
+core_bundle = yt_dlp_ejs.yt.solver.core()
+lib_bundle = yt_dlp_ejs.yt.solver.lib()
+
+# These bundles can now be executed in a JavaScript runtime
+# to solve YouTube's n-parameter and signature challenges
+
+# Example workflow:
+# 1. Execute lib_bundle in your JS runtime to load dependencies
+# 2. Execute core_bundle to load the main solver
+# 3. Call the solver with YouTube player code and challenges
+# 4. Receive solved n-parameters and signatures
+```
+
+## Notes
+
+<Note>
+  Both functions return minified JavaScript code. The bundles are pre-compiled and optimized for production use.
+</Note>
+
+<Note>
+  These functions only return the JavaScript code as strings. You need a JavaScript runtime (Node.js, Deno, browser, or embedded engine like PyMiniRacer) to actually execute the solvers.
+</Note>
+
+## Error Handling
+
+Both functions will raise an exception if the bundle files cannot be read from package resources. This typically only occurs if the package installation is corrupted.
+
+```python
+try:
+    core_js = yt_dlp_ejs.yt.solver.core()
+except Exception as e:
+    print(f"Failed to load core bundle: {e}")
+```

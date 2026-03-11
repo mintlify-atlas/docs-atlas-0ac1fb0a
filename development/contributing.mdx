@@ -1,0 +1,414 @@
+---
+title: Contributing Guide
+description: Learn how to contribute to yt-dlp-ejs development
+---
+
+Thank you for your interest in contributing to yt-dlp-ejs! This guide will help you get started with the development workflow, code style requirements, and submission process.
+
+## Getting Started
+
+<Steps>
+  <Step title="Fork and clone the repository">
+    ```bash
+    git clone https://github.com/yt-dlp/ejs.git
+    cd ejs
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    Choose your preferred runtime:
+    
+    <CodeGroup>
+    ```bash Deno
+    deno install --frozen
+    ```
+    
+    ```bash Bun
+    bun install --frozen-lockfile
+    ```
+    
+    ```bash Node.js
+    npm ci
+    ```
+    
+    ```bash pnpm
+    pnpm install --frozen-lockfile
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Download test player files">
+    ```bash
+    # With Deno
+    deno run src/yt/solver/test/download.ts
+    
+    # With Bun
+    bun --bun run src/yt/solver/test/download.ts
+    
+    # With Node.js
+    node --experimental-strip-types src/yt/solver/test/download.ts
+    ```
+  </Step>
+
+  <Step title="Create a branch for your changes">
+    ```bash
+    git checkout -b my-feature-branch
+    ```
+  </Step>
+</Steps>
+
+## Development Workflow
+
+### Making Changes
+
+1. **Write your code** - Make changes to TypeScript files in `src/`
+2. **Follow code style** - Use ESLint and Prettier (see below)
+3. **Build** - Test that your changes build successfully
+4. **Test** - Ensure all tests pass
+5. **Commit** - Write clear commit messages
+
+### Building Your Changes
+
+```bash
+# Quick build with auto-detected runtime
+python hatch_build.py
+
+# Or use runtime-specific commands
+deno task bundle      # Deno
+bun --bun run bundle  # Bun
+npm run bundle        # Node
+pnpm run bundle       # pnpm
+```
+
+See [Building from Source](/development/building) for detailed build instructions.
+
+### Running Tests
+
+Always run tests before submitting:
+
+```bash
+deno test  # Deno
+bun test   # Bun
+node --test # Node.js
+```
+
+See [Running Tests](/development/testing) for detailed testing instructions.
+
+## Code Style
+
+yt-dlp-ejs uses automated tooling to maintain consistent code style.
+
+### ESLint
+
+ESLint enforces code quality rules:
+
+```bash
+# Check for linting errors
+npm run lint
+# or with Deno
+deno task lint
+```
+
+The project uses:
+- **typescript-eslint** for TypeScript-specific rules
+- **@eslint/js** recommended configuration
+- Node.js global variables
+
+Configuration: `eslint.config.js`
+
+<Accordion title="ESLint Configuration">
+```javascript
+import js from "@eslint/js";
+import globals from "globals";
+import tseslint from "typescript-eslint";
+
+export default defineConfig([
+  {
+    files: ["**/*.{js,mjs,cjs,ts,mts,cts}"],
+    plugins: { js },
+    extends: ["js/recommended"],
+    languageOptions: { globals: globals.node },
+  },
+  tseslint.configs.recommended,
+]);
+```
+</Accordion>
+
+### Prettier
+
+Prettier formats code consistently:
+
+```bash
+# Check formatting
+npm run fmt:check
+# or with Deno
+deno task fmt:check
+
+# Auto-format all files
+npm run fmt
+# or with Deno
+deno task fmt
+```
+
+Prettier runs on:
+- All `**/*.[jt]s` files (JavaScript and TypeScript)
+- `package.json`
+
+<Tip>
+Run `npm run fmt` before committing to automatically fix formatting issues.
+</Tip>
+
+### Python Code Style
+
+Python code uses **Ruff** for linting and formatting:
+
+```bash
+# Check Python code
+ruff check
+
+# Check Python formatting
+ruff format --check
+
+# Auto-format Python code
+ruff format
+```
+
+Configuration is in `pyproject.toml` under `[tool.ruff.lint]`.
+
+## Continuous Integration Checks
+
+When you open a pull request, automated checks run:
+
+### Code Quality Checks
+- **actionlint** - Validates GitHub Actions workflows
+- **zizmor** - Audits workflow security
+- **Ruff** - Python linting and formatting
+- **Prettier** - JavaScript/TypeScript formatting
+- **ESLint** - JavaScript/TypeScript linting
+
+### Build Tests
+- **pnpm build** - Builds with pnpm
+- **Deno build** - Builds with Deno 2.0.0+
+- **Bun build** - Builds with Bun 1.0.31+
+- **Node build** - Builds with Node.js 20.0+
+
+### Runtime Tests
+- **Deno tests** - All player variants on Deno 2.0.0+
+- **Bun tests** - All player variants on Bun 1.2.11+
+- **Node tests** - All player variants on Node.js 22.18+
+- **Python tests** - Python 3.10-3.14 and PyPy 3.11 on Ubuntu and Windows
+
+### Additional Checks
+- **Lockfile verification** - Ensures Deno and npm lockfiles are synchronized
+- **Build hash verification** - Confirms all runtimes produce identical output
+
+<Note>
+All checks must pass before a pull request can be merged. You can run these checks locally before pushing.
+</Note>
+
+## Upgrading Packages
+
+yt-dlp-ejs provides lockfiles for every supported package manager. When upgrading packages, **all lockfiles must be updated simultaneously**.
+
+<Warning>
+Never commit changes to `package.json` without updating all lockfiles!
+</Warning>
+
+<Steps>
+  <Step title="Upgrade packages in package.json">
+    ```bash
+    # Automatic upgrade (recommended)
+    pnpm upgrade --latest
+    
+    # Or manually edit package.json versions
+    ```
+  </Step>
+
+  <Step title="Generate base package-lock.json">
+    ```bash
+    rm -rf node_modules
+    npm install
+    ```
+  </Step>
+
+  <Step title="Migrate to other package managers">
+    ```bash
+    # Generate pnpm lockfile from package-lock.json
+    pnpm import
+    
+    # Generate bun lockfile from package-lock.json
+    bun pm migrate --force
+    ```
+  </Step>
+
+  <Step title="Update Deno lockfile">
+    ```bash
+    # Use Deno <2.3 for lockfile v4 compatibility
+    deno install --lockfile-only
+    ```
+    
+    <Note>
+    Make sure to use a Deno version with lockfile v4 (earlier than 2.3).
+    </Note>
+  </Step>
+
+  <Step title="Verify lockfile synchronization">
+    ```bash
+    python check.py
+    ```
+    
+    This ensures `deno.json` matches `package-lock.json`. If this fails, you may need to manually update the `ADDITIONAL_PACKAGES_NODE` and/or `ADDITIONAL_PACKAGES_DENO` variables in `check.py`.
+  </Step>
+</Steps>
+
+### Understanding check.py
+
+The `check.py` script validates that npm and Deno lockfiles contain the same package versions (by comparing integrity hashes). This prevents version drift between runtimes.
+
+If `check.py` fails:
+1. Check the error message for which packages differ
+2. Verify you followed all update steps
+3. Manually update `ADDITIONAL_PACKAGES_NODE` or `ADDITIONAL_PACKAGES_DENO` in `check.py` if needed
+
+## Submitting Changes
+
+### Pull Requests
+
+When you're ready to submit:
+
+<Steps>
+  <Step title="Ensure all checks pass locally">
+    ```bash
+    # Format code
+    npm run fmt
+    
+    # Lint code
+    npm run lint
+    
+    # Build
+    python hatch_build.py
+    
+    # Test
+    deno test  # or bun test / node --test
+    
+    # Verify lockfiles (if you changed dependencies)
+    python check.py
+    ```
+  </Step>
+
+  <Step title="Commit your changes">
+    ```bash
+    git add .
+    git commit -m "Description of changes"
+    ```
+    
+    Write clear, descriptive commit messages explaining what and why.
+  </Step>
+
+  <Step title="Push to your fork">
+    ```bash
+    git push origin my-feature-branch
+    ```
+  </Step>
+
+  <Step title="Open a pull request">
+    Go to [github.com/yt-dlp/ejs](https://github.com/yt-dlp/ejs) and open a pull request from your branch.
+    
+    Include:
+    - **Description** of what changed and why
+    - **Testing details** - what you tested
+    - **Related issues** - link any related issues
+  </Step>
+</Steps>
+
+### Pull Request Checklist
+
+- [ ] Code follows ESLint and Prettier style
+- [ ] All tests pass locally
+- [ ] New tests added for new functionality
+- [ ] Documentation updated if needed
+- [ ] All lockfiles updated (if dependencies changed)
+- [ ] `check.py` passes (if lockfiles changed)
+- [ ] Commit messages are clear and descriptive
+
+## Reporting Issues
+
+Found a bug or have a feature request?
+
+<CardGroup cols={2}>
+  <Card title="Report a Bug" icon="bug" href="https://github.com/yt-dlp/ejs/issues/new">
+    Open an issue describing the problem, including:
+    - Steps to reproduce
+    - Expected vs actual behavior
+    - Runtime and version
+    - Error messages or logs
+  </Card>
+  
+  <Card title="Request a Feature" icon="lightbulb" href="https://github.com/yt-dlp/ejs/issues/new">
+    Describe the feature you'd like to see and why it would be useful.
+  </Card>
+</CardGroup>
+
+### Issue Guidelines
+
+When reporting issues:
+
+1. **Search existing issues** - Your issue may already be reported
+2. **Provide details** - Include version numbers, error messages, and reproduction steps
+3. **Be specific** - Vague issues are harder to fix
+4. **One issue per report** - Don't combine multiple unrelated issues
+
+### Reporting Build Differences
+
+If you notice differences between different runtime builds:
+
+```bash
+# Build with different runtimes
+python hatch_build.py  # auto-detects
+deno task bundle
+bun --bun run bundle
+npm run bundle
+
+# Compare outputs
+sha256sum dist/*.js
+```
+
+Report the issue with:
+- Which runtimes produce different outputs
+- SHA-256 hashes of the outputs
+- Runtime versions
+
+<Warning>
+Build inconsistencies are critical issues. Please report them at [github.com/yt-dlp/ejs/issues/new](https://github.com/yt-dlp/ejs/issues/new).
+</Warning>
+
+## Development Resources
+
+<CardGroup cols={2}>
+  <Card title="Source Repository" icon="github" href="https://github.com/yt-dlp/ejs">
+    View source code and browse issues
+  </Card>
+  
+  <Card title="CI Workflows" icon="circle-check" href="https://github.com/yt-dlp/ejs/tree/main/.github/workflows">
+    See automated testing configuration
+  </Card>
+</CardGroup>
+
+## Code of Conduct
+
+Be respectful and constructive in all interactions. This project follows standard open-source collaboration practices:
+
+- Be welcoming and inclusive
+- Respect differing viewpoints
+- Focus on what's best for the project
+- Show empathy towards other contributors
+
+## Questions?
+
+If you have questions about contributing:
+
+1. Check existing [documentation](https://github.com/yt-dlp/ejs#readme)
+2. Search [existing issues](https://github.com/yt-dlp/ejs/issues)
+3. Open a new issue with your question
+
+Thank you for contributing to yt-dlp-ejs!

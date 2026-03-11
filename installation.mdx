@@ -1,0 +1,146 @@
+---
+title: Installation
+description: Install yt-dlp-ejs to enable external JavaScript support for yt-dlp
+icon: download
+---
+
+## Overview
+
+yt-dlp-ejs provides external JavaScript support for yt-dlp, enabling it to process YouTube player code across multiple JavaScript runtimes including Deno, Bun, and Node.js.
+
+## Requirements
+
+<Info>
+**Python Version**: Requires Python 3.10 or higher
+
+Supported Python implementations:
+- CPython 3.10, 3.11, 3.12, 3.13, 3.14
+- PyPy
+</Info>
+
+## Installation
+
+<Steps>
+
+<Step title="Install with pip">
+
+Install yt-dlp-ejs into the same Python environment as yt-dlp:
+
+```bash
+pip install -U yt-dlp-ejs
+```
+
+The `-U` flag ensures you get the latest version.
+
+</Step>
+
+<Step title="Verify installation">
+
+Verify the installation by importing the module in Python:
+
+```python
+import yt_dlp_ejs
+from yt_dlp_ejs import version
+
+print(f"yt-dlp-ejs version: {version}")
+```
+
+You should see the installed version number without any errors.
+
+</Step>
+
+<Step title="Test solver functions">
+
+Verify that the solver bundles are accessible:
+
+```python
+import yt_dlp_ejs.yt.solver
+
+# Check if core bundle is available
+core_js = yt_dlp_ejs.yt.solver.core()
+print(f"Core bundle size: {len(core_js)} bytes")
+
+# Check if lib bundle is available
+lib_js = yt_dlp_ejs.yt.solver.lib()
+print(f"Lib bundle size: {len(lib_js)} bytes")
+```
+
+</Step>
+
+</Steps>
+
+## Dependencies
+
+yt-dlp-ejs has **zero runtime dependencies**. All required JavaScript code is bundled within the package, including:
+
+- **meriyah** - JavaScript parser (ISC License)
+- **astring** - JavaScript code generator (MIT License)
+
+<Note>
+The package itself is licensed under the Unlicense, but prebuilt wheels include third-party dependencies under their respective licenses (ISC and MIT).
+</Note>
+
+## What Gets Installed
+
+When you install yt-dlp-ejs, you get:
+
+<CardGroup cols={2}>
+
+<Card title="Python API" icon="python">
+Python functions to access the JavaScript solver bundles
+</Card>
+
+<Card title="Core Bundle" icon="cube">
+Minified JavaScript solver for processing player code (`core.min.js`)
+</Card>
+
+<Card title="Library Bundle" icon="books">
+Minified JavaScript library bundle for extended functionality (`lib.min.js`)
+</Card>
+
+<Card title="Version Info" icon="tag">
+Version metadata for tracking installed releases
+</Card>
+
+</CardGroup>
+
+## Troubleshooting
+
+### Python Version Issues
+
+If you encounter errors about Python version compatibility:
+
+```bash
+# Check your Python version
+python --version
+
+# Ensure you're using Python 3.10 or higher
+python3.10 -m pip install -U yt-dlp-ejs
+```
+
+### Import Errors
+
+If you get import errors, ensure yt-dlp-ejs is installed in the correct environment:
+
+```bash
+# Check where yt-dlp-ejs is installed
+pip show yt-dlp-ejs
+
+# Reinstall if needed
+pip uninstall yt-dlp-ejs
+pip install yt-dlp-ejs
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Quickstart" icon="rocket" href="/quickstart">
+Get started with a working example
+</Card>
+
+<Card title="API Reference" icon="code" href="/api/python-api">
+Explore the full API documentation
+</Card>
+
+</CardGroup>

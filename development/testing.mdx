@@ -1,0 +1,292 @@
+---
+title: Running Tests
+description: Learn how to set up the test environment and run tests with different JavaScript runtimes
+---
+
+yt-dlp-ejs includes comprehensive tests that verify YouTube player JavaScript decryption across multiple runtime environments. Tests run against real YouTube player files to ensure compatibility.
+
+## Test Overview
+
+The test suite validates:
+- **N-parameter transformations** - URL signature decryption
+- **Signature solving** - Video signature decryption
+- **Multiple player variants** - main, tcc, tce, es5, es6, tv, phone variants
+- **Cross-runtime compatibility** - Deno, Bun, and Node.js
+
+<Info>
+Tests use real YouTube player JavaScript files that are downloaded before running the test suite.
+</Info>
+
+## Setting Up the Test Environment
+
+Before running tests, you need to install dependencies and download player files.
+
+### Step 1: Install Dependencies
+
+Choose your runtime and install dependencies:
+
+<Tabs>
+  <Tab title="Deno">
+    ```bash
+    deno install --frozen
+    ```
+  </Tab>
+  <Tab title="Bun">
+    ```bash
+    bun install --frozen-lockfile
+    ```
+  </Tab>
+  <Tab title="Node.js">
+    ```bash
+    npm ci
+    ```
+    
+    <Note>
+    Node.js 22.6+ is required for TypeScript support with `--experimental-strip-types`.
+    </Note>
+  </Tab>
+</Tabs>
+
+### Step 2: Download Player Files
+
+Download the YouTube player JavaScript files used for testing:
+
+<Tabs>
+  <Tab title="Deno">
+    ```bash
+    deno run src/yt/solver/test/download.ts
+    ```
+    
+    With permissions explicitly granted:
+    ```bash
+    deno run \
+      --no-prompt \
+      --allow-read=src/yt/solver/test/players/ \
+      --allow-write=src/yt/solver/test/players/ \
+      --allow-net=www.youtube.com \
+      --allow-sys=uid \
+      src/yt/solver/test/download.ts
+    ```
+  </Tab>
+  <Tab title="Bun">
+    ```bash
+    bun --bun run src/yt/solver/test/download.ts
+    ```
+  </Tab>
+  <Tab title="Node.js">
+    ```bash
+    node --experimental-strip-types src/yt/solver/test/download.ts
+    ```
+    
+    <Warning>
+    Node.js requires version 22.6 or higher for TypeScript support.
+    </Warning>
+  </Tab>
+</Tabs>
+
+The download script:
+- Fetches player files from YouTube (www.youtube.com)
+- Saves them to `src/yt/solver/test/players/`
+- Downloads all variants needed for the test suite
+- Uses cached files when available
+
+<Tip>
+The download process can take several minutes depending on your connection. Player files are cached locally to speed up subsequent runs.
+</Tip>
+
+## Running Tests
+
+Once dependencies are installed and player files are downloaded, run the tests:
+
+<Tabs>
+  <Tab title="Deno">
+    ```bash
+    deno test
+    ```
+    
+    Run with full permissions:
+    ```bash
+    deno test \
+      --no-prompt \
+      --no-check \
+      --allow-read=src/yt/solver/test/players/
+    ```
+    
+    Run specific player variant:
+    ```bash
+    deno test --filter="-main-"
+    ```
+  </Tab>
+  <Tab title="Bun">
+    ```bash
+    bun test
+    ```
+    
+    <Note>
+    Bun version 1.2.11+ is recommended for the full test suite, though 1.0.31+ is supported for builds.
+    </Note>
+  </Tab>
+  <Tab title="Node.js">
+    ```bash
+    node --test
+    ```
+    
+    <Note>
+    Node.js version 22.18+ is recommended for the test suite, though 20.0+ is supported for builds.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Test Structure
+
+Tests are organized in `src/yt/solver/test/`:
+
+```
+src/yt/solver/test/
+├── download.ts      # Downloads player JS files
+├── tests.ts         # Test definitions and expected outputs
+├── utils.ts         # Test utilities and helpers
+├── io.ts           # File I/O operations
+└── players/        # Downloaded player files (cached)
+```
+
+### Test Definitions
+
+Each test in `tests.ts` defines:
+
+- **Player ID** - 8-character hash identifying the player version
+- **Variants** - Which player variants to test (main, tcc, tce, es5, es6, tv, tv_es6, phone)
+- **N-parameter tests** - Input/expected output pairs for URL decryption
+- **Signature tests** - Input/expected output pairs for signature decryption
+
+<Accordion title="Example Test Structure">
+```typescript
+{
+  player: "3d3ba064",
+  n: [
+    { input: "ZdZIqFPQK-Ty8wId", expected: "qmtUsIz04xxiNW" },
+    { input: "4GMrWHyKI5cEvhDO", expected: "N9gmEX7YhKTSmw" },
+  ],
+  sig: [
+    {
+      input: "gN7a-hudCuAuPH6fByOk1_GNXN0yNMHShjZXS2VOgsEItAJz0tipeavEOmNdYN-wUtcEqD3bCXjc0iyKfAyZxCBGgIARwsSdQfJ2CJtt",
+      expected: "ttJC2JfQdSswRAIgGBCxZyAfKyi0cjXCb3gqEctUw-NYdNmOEvaepit0zJAtIEsgOV2SXZjhSHMNy0NXNG_1kNyBf6HPuAuCduh-a7O",
+    },
+  ],
+}
+```
+
+Some tests are marked as "Synthetic test" - these use artificially generated test cases for regression testing.
+</Accordion>
+
+### Player Variants
+
+The test suite validates multiple YouTube player variants:
+
+- **`main`** - Standard player (player_ias.vflset)
+- **`tcc`** - Type-checking compiled (player_ias_tcc.vflset)
+- **`tce`** - Type-checking enabled (player_ias_tce.vflset)  
+- **`es5`** - ES5-compatible player
+- **`es6`** - ES6+ player
+- **`tv`** - TV platform player
+- **`tv_es6`** - TV ES6 player
+- **`phone`** - Mobile phone player
+- **`es6_tcc`** - ES6 with type-checking compiled
+- **`es6_tce`** - ES6 with type-checking enabled
+
+<Note>
+Some player versions have issues with certain variants (e.g., "tce causes exception even in browser"). These are tested across other variants for regression testing.
+</Note>
+
+## What Tests Validate
+
+The test suite ensures:
+
+1. **Correct decryption** - Player transformations produce expected outputs
+2. **Runtime compatibility** - Same results across Deno, Bun, and Node.js
+3. **Player variant handling** - All player types are correctly processed
+4. **Regression prevention** - Historical player versions continue working
+
+## Parallel Test Execution
+
+For faster execution, you can run tests in parallel:
+
+```bash
+# Deno: Run all variants in parallel
+xargs -n 1 -P 10 deno test \
+  --no-prompt \
+  --no-check \
+  --allow-read=src/yt/solver/test/players/ \
+  --filter <<<"$(printf -- '-%s-\n' main tcc tce es5 es6 tv tv_es6 phone es6_tcc es6_tce)"
+```
+
+This command:
+- Uses `xargs` with `-P 10` for 10 parallel processes
+- Filters tests by variant name
+- Runs each variant test independently
+
+## CI Test Workflow
+
+The GitHub Actions CI runs tests across:
+- **Runtimes**: Deno (2.0.0+), Bun (1.2.11+), Node (22.18+)
+- **Platforms**: Ubuntu and Windows (Python tests)
+- **Python versions**: 3.10, 3.11, 3.12, 3.13, 3.14, PyPy 3.11
+
+The workflow:
+1. Caches player files based on `tests.ts` hash
+2. Downloads player files once (15 min timeout)
+3. Runs tests in parallel across all runtimes
+4. Validates Python integration
+
+## Troubleshooting
+
+### Missing Player Files
+
+If tests fail with "player file not found":
+
+```bash
+# Re-download player files
+rm -rf src/yt/solver/test/players/*.js
+<runtime> run src/yt/solver/test/download.ts
+```
+
+### Permission Errors (Deno)
+
+Deno requires explicit permissions. Use:
+
+```bash
+deno test --allow-read=src/yt/solver/test/players/
+```
+
+### Test Failures
+
+If tests fail:
+1. Check you're using the correct runtime version (see requirements above)
+2. Ensure player files are downloaded successfully
+3. Verify dependencies are installed with frozen lockfiles
+4. Check for network issues during player download
+
+<Warning>
+Test failures may indicate YouTube player changes. If multiple tests fail, please [report an issue](https://github.com/yt-dlp/ejs/issues/new) with the failing player IDs.
+</Warning>
+
+## Python Tests
+
+To run Python-specific tests:
+
+```bash
+# Build the package first
+python -m pip install -U build
+python -m build
+
+# Unpack the wheel
+unzip -u dist/yt_dlp_ejs-*.whl "yt_dlp_ejs/*"
+
+# Run Python tests
+python -Werror -m unittest
+```
+
+Python tests verify:
+- Package structure and imports
+- JavaScript integration
+- Cross-platform compatibility (Windows/Linux)
